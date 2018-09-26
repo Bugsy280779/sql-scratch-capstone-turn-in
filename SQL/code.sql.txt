@@ -1,0 +1,76 @@
+--quiz funnel: how many responses to each question
+select question, count(*) as 'No of Responses'
+from survey
+group by 1;
+
+--conversion rates (q to h and h to p)
+with funnel as (
+SELECT DISTINCT q.user_id,
+   h.user_id IS NOT NULL AS 'is_home_try_on',
+   h.number_of_pairs,
+   p.user_id IS NOT NULL AS 'is_purchase'
+FROM quiz q
+LEFT JOIN home_try_on h
+   ON q.user_id = h.user_id
+LEFT JOIN purchase p
+   ON p.user_id = q.user_id)
+select count(*) as 'num_quiz',
+sum(is_home_try_on) as 'num_try_on',
+sum(is_purchase) as 'num_purchase', 1.0 * sum(is_home_try_on) / count(user_id) as 'Convert % Quiz to Home Try On', 1.0* sum(is_purchase) / sum(is_home_try_on) as 'Convert % Home Try On to Purchase'
+from funnel
+LIMIT 10;
+
+--a/b test analysis: 5 Pairs
+with funnel as (
+SELECT DISTINCT q.user_id,
+   h.user_id IS NOT NULL AS 'is_home_try_on',
+   h.number_of_pairs,
+   p.user_id IS NOT NULL AS 'is_purchase'
+FROM quiz q
+LEFT JOIN home_try_on h
+   ON q.user_id = h.user_id
+LEFT JOIN purchase p
+   ON p.user_id = q.user_id)
+select count(*) as 'num_quiz',
+sum(is_home_try_on) as 'num_try_on',
+sum(is_purchase) as 'num_purchase', 1.0 * sum(is_home_try_on) / count(user_id) as 'Convert % Quiz to Home Try On', 1.0* sum(is_purchase) / sum(is_home_try_on) as 'Convert % Home Try On to Purchase'
+from funnel
+where number_of_pairs = '5 pairs'
+LIMIT 10;
+--3 pair conv rate 53% / 5 pair conv rate 79%
+
+--count men's style purchases and women's  style purchases
+with funnel as (
+SELECT DISTINCT q.user_id,
+   h.user_id IS NOT NULL AS 'is_home_try_on',
+   q.style,
+   p.user_id IS NOT NULL AS 'is_purchase'
+FROM quiz q
+LEFT JOIN home_try_on h
+   ON q.user_id = h.user_id
+LEFT JOIN purchase p
+   ON p.user_id = q.user_id)
+select style, sum(is_purchase) from funnel
+group by style;
+
+--best and worst selling products
+select product_id, count(product_id) as 'sales' from purchase
+group by product_id
+order by 2;
+
+--sales split by model
+select model_name, count(*) as total_sales from purchase
+group by model_name;
+
+--sales by product_id
+select distinct product_id, style, model_name, color, price, count(*) as 'Number of Sales'
+from purchase
+group by 1
+order by 6 desc;
+
+--sales by product_id with total value column
+select distinct product_id, style, model_name, color, price, count(*) as 'Number of Sales', price * count(*) as value
+from purchase
+group by 1
+order by 6 desc;
+
